@@ -1,0 +1,5 @@
+repos:
+  - url: "../../hooks/rust"
+
+hooks:
+  - name: cargofmt

@@ -1,0 +1,86 @@
+= Git Hook Manager
+Paul Ollivier <contact@paulollivier.fr>
+
+This project is an attempt to provide a way to share easily https://git-scm.com/book/en/v2/Customizing-Git-Git-Hooks[git hooks].
+
+In many teams, we rely on a full suite of tooling, and the need to share code conventions and quality standards.
+
+This tool tries to unify git hook management via the well-known shared repository dotfiles mechanisms.
+
+[WARN]
+====
+This tool is still in its prototyping phase, and will most likely hurt children, attempt to summon inter-plane beings and damage your git repository
+
+You have been warned.
+====
+
+== Design doc
+
+I am convinced Rust is the language to go regarding system tooling, for its performance and error handling design.
+
+The solution has 3 parts:
+
+- The config file inside a repository, specifying which hook to enable for everyone, as well as hook sources.
+- Multiple hook repositories containing code to set up and use a variety of tools.
+For instance, a `rust` repository may contain the definitions of a `rustfmt`, `cargo check`, or even `cargo test` hook.
+- The binary provided by the code alongside the document you are reading right now.
+This binary needs to handle reading the repos' config file, downloading the hook repositories, and apply them on the proper git events (`pre-commit`, `post-commit`, `pre-index`, …)
+
+=== The `.hooks.yml` file
+
+This file is expected to be found at the root of the git repository.
+It contains definitions to be read by the main binary.
+
+.Example file for a rust project
+[source,yaml]
+----
+repos:
+  - https://github.com/paulollivier/rust-hooks
+hooks:
+  - name: cargofmt
+----
+
+=== A hook definitions repository
+
+This is a simple git repository, with a `hooks.yml` at its root.
+
+[WARN]
+====
+Not to be confused by the `.hooks.yml`!
+The dotted version is to use the git hook manager for the current repo, the non-dotted version is for hooks definitions!
+====
+
+.Sample file containing hook definition
+[source,yaml]
+----
+hooks:
+  - name: rustfmt
+    on_event:
+      - pre-commit
+    on_file_regex:
+      - "*.rs"
+    action: "rustfmt {files}"
+    setup_script: rustfmt_setup.sh
+----
+
+.Sample repository structure
+[source]
+----
+.
+|-- hooks.yml
+`-- rustfmt_setup.sh
+----
+
+=== The git-hooks binary
+
+==== Roles
+
+* manage hook repos:
+** [x] clone hooks repos
+** [x] pull repos
+** [ ] checkout a specific hook repo revision
+* [x] init the hook repos (execute their setup script)
+* [ ] set itself up as to be executed on git events
+** [ ] handle multiple args arguments, such as `{file}`, `{files}`, `{root}`, `{changed_files}`
+** [ ] restrict execution to specified file regexps
+** [ ] run only when the git index contains the specified file regexps
