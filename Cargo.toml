@@ -1,5 +1,5 @@
 [package]
-name = "git-hook-manager"
+name = "git-hooks"
 version = "0.1.0"
 authors = ["Paul Ollivier <contact@paulollivier.fr>"]
 edition = "2018"
@@ -10,6 +10,9 @@ edition = "2018"
 regex = "1.4.2"
 serde = { version = "1", features = ["derive"] }
 serde_yaml = "0.8"
-log = "0"
+log = "0.4.11"
 pretty_env_logger = "0.4.0"
 anyhow = "1.0.34"
+clap = "2"
+shlex = "0.1.1"
+walkdir = "2.3.1"
