@@ -85,7 +85,7 @@ fn run_hook(hook: &Hook, hook_repo_path: &str) -> anyhow::Result<()> {
     let mut env = HashMap::new();
     env.insert("PATH".to_string(), bin_path);
     // parse the action cli
-    let mut action = Shlex::new(hook.action.expect("None action on hook exec").as_str());
+    let mut action = Shlex::new(hook.action.as_ref().expect("None action on hook exec").as_str());
     if let (_consumed, Some(len)) = action.size_hint() {
         let cmd = action.next().unwrap();
         let args: Vec<String> = action.collect();
@@ -97,7 +97,7 @@ fn run_hook(hook: &Hook, hook_repo_path: &str) -> anyhow::Result<()> {
                         ActionFileToken::Files => {
                             let mut files = get_files(
                                 &root,
-                                &hook.on_file_regex.unwrap_or(vec!["*".to_string()]),
+                                &hook.on_file_regex.as_ref().unwrap_or(&vec!["*".to_string()]),
                             )?;
                             final_args.append(&mut files);
                         }
