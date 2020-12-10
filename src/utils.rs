@@ -1,16 +1,14 @@
 use std::{env, fs};
 use std::collections::HashMap;
 use std::ffi::OsStr;
-use std::fmt::Debug;
+use std::fmt::{Debug, Display};
 use std::io::Read;
-use std::iter::Map;
 use std::path::Path;
 use std::process::{Command, ExitStatus, Stdio};
 
 use log::{debug, error};
 use regex::Regex;
-use serde::export::fmt::Display;
-use walkdir::WalkDir;
+use walkdir::{DirEntry, WalkDir};
 
 use crate::git;
 
@@ -20,9 +18,14 @@ pub fn execute_cmd<T: AsRef<str> + AsRef<OsStr> + Debug>(
     bin: &str,
     args: &[T],
     cwd: Option<&str>,
-    env: Option<HashMap<String, String>>,
+    env: Option<&HashMap<String, String>>,
 ) -> anyhow::Result<(ExitStatus, String, String)> {
-    let env = env.unwrap_or(HashMap::new());
+    debug!(
+        "called \"{} {:?}\" in {:?} with env expanded with {:?}",
+        bin, args, cwd, env
+    );
+    let empty_map = HashMap::new();
+    let env = env.unwrap_or(&empty_map);
     let mut cmd = match cwd {
         Some(path) => Command::new(bin)
             .args(args)
@@ -38,14 +41,16 @@ pub fn execute_cmd<T: AsRef<str> + AsRef<OsStr> + Debug>(
             .envs(env)
             .spawn()?,
     };
-    let res = cmd.wait();
     let (mut stderr, mut stdout) = (String::new(), String::new());
     if let Some(mut output) = cmd.stderr.take() {
         output.read_to_string(&mut stderr)?;
     }
+    debug!("cmd stdout: {}", stdout);
     if let Some(mut output) = cmd.stdout.take() {
         output.read_to_string(&mut stdout)?;
     }
+    debug!("cmd stderr: {}", stdout);
+    let res = cmd.wait();
     if res.is_err() {
         error!(
             "Error on \"{} {:?}\" invocation, here's the output:\nstdout: {}\nstderr: {}",
@@ -73,29 +78,49 @@ pub fn get_local_repo_path(url: &str) -> anyhow::Result<String> {
     ))
 }
 
+fn _matches<T: AsRef<str> + Display>(e: &Path, regexps: &[T]) -> bool {
+    let dot_git_re = Regex::new("\\.git/*").expect("invalid git regex");
+    if e.is_dir() {
+        debug!("skipping dir {}", e.display());
+        return false;
+    }
+    if dot_git_re.is_match(&e.display().to_string()) {
+        debug!("skipping git file {}", e.display());
+        return false;
+    }
+    for regex in regexps {
+        let r = Regex::new(regex.as_ref()).expect(&format!("invalid regex: {}", regex));
+        if r.is_match(&e.display().to_string()) {
+            debug!("Found matching file {}", e.display());
+            return true;
+        }
+        debug!("File {} didn't match re {}", e.display(), regex);
+    }
+    debug!("File {} didn't match", e.display());
+    false
+}
+
 pub fn get_files<T: AsRef<str> + Display>(
     base_dir: &str,
     regexps: &[T],
 ) -> anyhow::Result<Vec<String>> {
-    let dot_git_re = Regex::new(".git/*")?;
-    let mut flist: Vec<String> = Vec::new();
-    for entry in WalkDir::new(base_dir).into_iter().filter_entry(|e| {
-        for regex in regexps {
-            let r = Regex::new(regex.as_ref()).expect(&format!("invalid regex: {}", regex));
-            if r.is_match(&e.path().display().to_string())
-                && !(dot_git_re.is_match(&e.path().display().to_string()) || e.path().is_dir())
-            {
-                debug!("Found matching file {}", e.path().display());
-                return true;
-            }
-        }
-        false
-    }) {
-        flist.push(entry?.path().display().to_string());
-    }
-    Ok(flist)
+    let final_list = WalkDir::new(base_dir)
+        .into_iter()
+        .filter_map(Result::ok)
+        .filter(|e| {
+            debug!("trying file {}", e.path().display());
+            _matches(e.path(), regexps)
+        })
+        .map(|e| {
+            debug!("Adding file {:?}", e);
+            e.path().display().to_string()
+        })
+        .collect();
+    debug!("final list: {:?}", final_list);
+    Ok(final_list)
 }
 
+/// Returns true if the given program name can be found in $PATH
 pub fn is_program_in_path(program: &str) -> bool {
     if let Ok(path) = env::var("PATH") {
         for p in path.split(":") {
@@ -106,4 +131,12 @@ pub fn is_program_in_path(program: &str) -> bool {
         }
     }
     false
+}
+
+pub fn prefix_path(p: &str) -> String {
+    // expand PATH
+    let mut bin_path = env::var("PATH").expect("PATH is not set in the env.");
+    bin_path.insert_str(0, &format!("{}:", p));
+    debug!("New $PATH: {}", &bin_path);
+    bin_path
 }

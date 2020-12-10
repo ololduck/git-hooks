@@ -1,5 +1,5 @@
 repos:
-  - url: "../../hooks/rust"
+  - url: https://github.com/paulollivier/rust-hooks
 
 hooks:
   - name: cargofmt

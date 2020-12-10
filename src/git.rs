@@ -1,5 +1,5 @@
 use std::ffi::OsStr;
-use std::fmt::{Debug, Display};
+use std::fmt::Debug;
 use std::fs;
 use std::path::Path;
 use std::process::ExitStatus;
@@ -37,6 +37,7 @@ pub fn clone<T: AsRef<str>, U: AsRef<str>>(source: T, target: U) -> anyhow::Resu
     Ok(String::from(target.as_ref()))
 }
 
+/// Pulls code on the default git branch, givent a repo
 pub fn pull(source: &str, target: &str) -> anyhow::Result<String> {
     debug!("getting a fresh version of {}", source);
     let target_dir = Path::new(&target);
@@ -47,6 +48,8 @@ pub fn pull(source: &str, target: &str) -> anyhow::Result<String> {
     Ok(stdout)
 }
 
+/// Returns the root of the repository.
+/// If executed in /tmp/my-repo/src, returns /tmp/my-repo
 pub fn root() -> anyhow::Result<String> {
     let (_status, stdout, _stderr) =
         git_command(&["rev-parse", "--show-toplevel"] as &[&str], None)?;

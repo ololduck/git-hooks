@@ -10,7 +10,7 @@ use log::{debug, error, info, warn};
 use serde::{Deserialize, Serialize};
 use shlex::Shlex;
 
-use crate::utils::{execute_cmd, get_files, get_local_repo_path};
+use crate::utils::{execute_cmd, get_files, get_local_repo_path, prefix_path};
 
 mod git;
 mod utils;
@@ -80,49 +80,55 @@ fn run_hook(hook: &Hook, hook_repo_path: &str) -> anyhow::Result<()> {
     let root = git::root().expect("Could not get git root.");
     // expand PATH
     let mut bin_path = env::var("PATH").expect("PATH is not set in the env.");
-    bin_path.push_str(&format!(";{}", hook_repo_path));
+    bin_path.push_str(&format!("{}:", hook_repo_path));
     debug!("New $PATH: {}", &bin_path);
     let mut env = HashMap::new();
     env.insert("PATH".to_string(), bin_path);
     // parse the action cli
-    let mut action = Shlex::new(hook.action.as_ref().expect("None action on hook exec").as_str());
-    if let (_consumed, Some(len)) = action.size_hint() {
-        let cmd = action.next().unwrap();
-        let args: Vec<String> = action.collect();
-        let mut final_args: Vec<String> = Vec::new();
-        if len > 1 {
-            for arg in &args {
-                if let Some(token) = ActionFileToken::from_str(&arg) {
-                    match token {
-                        ActionFileToken::Files => {
-                            let mut files = get_files(
-                                &root,
-                                &hook.on_file_regex.as_ref().unwrap_or(&vec!["*".to_string()]),
-                            )?;
-                            final_args.append(&mut files);
-                        }
-                        ActionFileToken::File => {
-                            unimplemented!("we should check for the token before, as it changes the whole execution logic");
-                        }
-                        ActionFileToken::ChangedFiles => {
-                            // TODO: implement me
-                            unimplemented!();
-                        }
-                        ActionFileToken::ChangedFile => {
-                            // TODO: implement me
-                            unimplemented!();
-                        }
-                        ActionFileToken::Root => {
-                            final_args.push(root.clone());
-                        }
-                    }
-                } else {
-                    final_args.push(arg.to_string());
+    let mut action = Shlex::new(
+        hook.action
+            .as_ref()
+            .expect("None action on hook exec")
+            .as_str(),
+    );
+    let cmd = action.next().unwrap();
+    let args: Vec<String> = action.collect();
+    let mut final_args: Vec<String> = Vec::new();
+    for arg in &args {
+        if let Some(token) = ActionFileToken::from_str(&arg) {
+            match token {
+                ActionFileToken::Files => {
+                    let mut files = get_files(
+                        &root,
+                        &hook
+                            .on_file_regex
+                            .as_ref()
+                            .unwrap_or(&vec!["*".to_string()]),
+                    )?;
+                    // TODO: find a way to cancel execution if `files` is empty
+                    final_args.append(&mut files);
+                }
+                ActionFileToken::File => {
+                    unimplemented!("we should check for the token before, as it changes the whole execution logic");
+                }
+                ActionFileToken::ChangedFiles => {
+                    // TODO: implement me
+                    unimplemented!();
+                }
+                ActionFileToken::ChangedFile => {
+                    // TODO: implement me
+                    unimplemented!();
+                }
+                ActionFileToken::Root => {
+                    final_args.push(root.clone());
                 }
             }
+        } else {
+            final_args.push(arg.to_string());
         }
-        execute_cmd(&cmd, &args, Some(&root), Some(env))?;
     }
+    execute_cmd(&cmd, &final_args, Some(&root), Some(&env))?;
+    debug!("finished executing {}", cmd);
     Ok(())
 }
 
@@ -149,13 +155,18 @@ impl ExternalHookRepo {
 
     /// runs the eventual setup script
     fn setup(&self) -> anyhow::Result<()> {
+        let mut env = HashMap::new();
+        env.insert(
+            "PATH".to_string(),
+            prefix_path(&get_local_repo_path(&self.url)?),
+        );
         for hook in &self.hooks {
             if hook.setup_script.is_some() {
                 utils::execute_cmd(
                     hook.setup_script.as_ref().expect("should not happen"),
                     &[] as &[&str],
                     Some(&get_local_repo_path(&self.url)?),
-                    None,
+                    Some(&env),
                 )?;
             }
         }
@@ -214,6 +225,7 @@ fn main() -> anyhow::Result<()> {
     pretty_env_logger::try_init()?;
     debug!("reading conf");
     let conf = HookConfig::from_file(None)?;
+    let active_hooks_names: Vec<String> = conf.hooks.iter().map(|h| h.name.clone()).collect();
     debug!("merged conf: {:?}", conf);
     let app = App::new("git-hooks")
         .author("Paul Ollivier <contact@paulollivier.fr>")
@@ -249,11 +261,16 @@ fn main() -> anyhow::Result<()> {
                         .map(|repo| {
                             repo.hooks
                                 .iter()
+                                // filter hooks with the right event
                                 .filter(|&hook| {
                                     if let Some(events) = &(*hook).on_event {
                                         return events.contains(&event);
                                     }
                                     false
+                                })
+                                // filter hooks with their IDs present.
+                                .filter(|&hook| {
+                                    active_hooks_names.contains(&hook.name)
                                 })
                                 .map(|hook| {
                                     debug!("would run hook {:?}", hook);
@@ -269,7 +286,7 @@ fn main() -> anyhow::Result<()> {
                                 }).for_each(drop);
                         })
                         .for_each(drop);
-                    if has_executed_hook {
+                    if !has_executed_hook {
                         info!("Nothing to do.");
                     }
                 }
