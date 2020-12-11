@@ -39,9 +39,10 @@ FLAGS:
     -V, --version    Prints version information
 
 SUBCOMMANDS:
-    help    Prints this message or the help of the given subcommand(s)
-    init    Install the git hooks in .git/hooks
-    run     Runs the configured hooks for a given event
+    help           Prints this message or the help of the given subcommand(s)
+    init           Install the git hooks in .git/hooks
+    run            Runs the configured hooks for a given event
+    self-update    git-hooks will try to update itself.
 ----
 
 If you are starting a new project, or at least trying `git-hooks` on a new project, you should run `git-hooks init`.

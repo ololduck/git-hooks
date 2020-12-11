@@ -327,11 +327,30 @@ fn ask_for_user_confirmation(prompt: &str) -> anyhow::Result<bool> {
     })
 }
 
+fn update() -> anyhow::Result<()> {
+    use self_update::cargo_crate_version;
+    let status = self_update::backends::github::Update::configure()
+        .repo_owner("paulollivier")
+        .repo_name("git-hooks")
+        .bin_name("git-hooks-linux-amd64")
+        .show_download_progress(true)
+        .current_version(cargo_crate_version!())
+        .build()?
+        .update()?;
+    if status.updated() {
+        println!("Downloaded a new version: `{}`!", status.version());
+    } else {
+        println!("No available update.");
+    }
+    Ok(())
+}
+
 fn main() -> anyhow::Result<()> {
     pretty_env_logger::try_init()?;
     let app = App::new("git-hooks")
         .author("Paul Ollivier <contact@paulollivier.fr>")
         .about("A git hooks manager\nhttps://github.com/paulollivier/git-hooks")
+        .subcommand(SubCommand::with_name("self-update").about("git-hooks will try to update itself."))
         .subcommand(SubCommand::with_name("init").about("Install the git hooks in .git/hooks"))
         .subcommand(
             SubCommand::with_name("run")
@@ -350,6 +369,9 @@ fn main() -> anyhow::Result<()> {
     let active_hooks_names: Vec<String> = conf.hooks.iter().map(|h| h.name.clone()).collect();
     debug!("merged conf: {:#?}", conf);
     match matches.subcommand() {
+        ("self-update", _) => {
+            update()?;
+        }
         ("init", _) => {
             if ask_for_user_confirmation(
                 "This will overwrite all the hooks in .git/hooks. Are you sure? [Y/N]",
