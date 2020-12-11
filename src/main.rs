@@ -168,12 +168,10 @@ fn run_hook(hook: &Hook, hook_repo_path: &str) -> anyhow::Result<()> {
                     final_args.push(root.clone());
                 }
             }
+        } else if should_run {
+            final_args.push(arg.to_string());
         } else {
-            if should_run {
-                final_args.push(arg.to_string());
-            } else {
-                info!("Could find any files to run hook on");
-            }
+            info!("Could find any files to run hook on");
         }
     }
     let (s, _, _) = execute_cmd(&cmd, &final_args, Some(&root), Some(&env))?;
