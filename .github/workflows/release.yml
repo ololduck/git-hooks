@@ -21,11 +21,15 @@ jobs:
 #          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 #          WITH_V: true
 #        id: bump_version
+      - uses: olegtarasov/get-tag@v2
+        id: tagName
+        with:
+          tagRegex: "(v.*)"  # Optional. Returns specified group text as tag name. Full tag string is returned if regex is not defined.
       - name: Upload binary to release
         uses: svenstaro/upload-release-action@v1-release
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: target/release/git-hooks
           asset_name: git-hooks-linux-amd64
-          tag: ${GITHUB_REF#refs/tags/}
+          tag: ${{ steps.tagName.outputs.tag }}
           overwrite: true
