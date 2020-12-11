@@ -4,3 +4,4 @@ repos:
 hooks:
   - name: cargofmt
   - name: cargocheck
+  - name: version_match

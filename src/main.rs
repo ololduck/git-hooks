@@ -126,7 +126,7 @@ fn run_hook(hook: &Hook, hook_repo_path: &str) -> anyhow::Result<()> {
     let mut should_run = true;
     // expand PATH
     let mut bin_path = env::var("PATH").expect("PATH is not set in the env.");
-    bin_path.push_str(&format!("{}:", hook_repo_path));
+    bin_path.push_str(&format!(":{}", hook_repo_path));
     debug!("New $PATH: {}", &bin_path);
     let mut env = HashMap::new();
     env.insert("PATH".to_string(), bin_path);
