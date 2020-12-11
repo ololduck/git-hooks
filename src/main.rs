@@ -60,6 +60,21 @@ enum HookEvent {
     Update,
 }
 
+static ALL_HOOK_EVENTS: &[HookEvent] = &[
+    HookEvent::ApplyPatchMsg,
+    HookEvent::CommitMsg,
+    HookEvent::PostCommit,
+    HookEvent::PostUpdate,
+    HookEvent::PreApplyPatch,
+    HookEvent::PreCommit,
+    HookEvent::PreMergeCommit,
+    HookEvent::PrePush,
+    HookEvent::PreRebase,
+    HookEvent::PreReceive,
+    HookEvent::PrepareCommitMsg,
+    HookEvent::Update,
+];
+
 impl HookEvent {
     fn to_kebab_case(&self) -> &'static str {
         match self {
@@ -292,6 +307,7 @@ impl HookConfig {
                 format!("#!/bin/bash -e\ngit-hooks run {}\n", event.to_kebab_case()).as_bytes(),
             )?;
         }
+        //TODO: create .hooks.yml if not existing?
         Ok(())
     }
 }
@@ -313,46 +329,32 @@ fn ask_for_user_confirmation(prompt: &str) -> anyhow::Result<bool> {
 
 fn main() -> anyhow::Result<()> {
     pretty_env_logger::try_init()?;
-    debug!("reading conf");
-    let conf = HookConfig::from_file(None)?;
-    let active_hooks_names: Vec<String> = conf.hooks.iter().map(|h| h.name.clone()).collect();
-    debug!("merged conf: {:#?}", conf);
     let app = App::new("git-hooks")
         .author("Paul Ollivier <contact@paulollivier.fr>")
-        .about("A git hooks manager")
-        .subcommand(SubCommand::with_name("init").help("install the git hooks"))
+        .about("A git hooks manager\nhttps://github.com/paulollivier/git-hooks")
+        .subcommand(SubCommand::with_name("init").about("Install the git hooks in .git/hooks"))
         .subcommand(
             SubCommand::with_name("run")
-                .help("Runs the configured hooks for a given event")
+                .about("Runs the configured hooks for a given event")
                 .arg(Arg::with_name("event")
                     .index(1)
                     .help("Runs the hook for the given event, eg. \"pre-commit\", \"post-commit\"…")
                     .required(true)
-                    .possible_values(&[HookEvent::PreCommit.to_kebab_case(),
-                        HookEvent::PostCommit.to_kebab_case()])
+                    .possible_values(&ALL_HOOK_EVENTS.iter().map(|e| e.to_kebab_case()).collect::<Vec<&'static str>>())
                 ),
         );
     let matches = app.get_matches();
     debug!("{:?}", matches);
+    debug!("reading conf");
+    let conf = HookConfig::from_file(None)?;
+    let active_hooks_names: Vec<String> = conf.hooks.iter().map(|h| h.name.clone()).collect();
+    debug!("merged conf: {:#?}", conf);
     match matches.subcommand() {
         ("init", _) => {
             if ask_for_user_confirmation(
                 "This will overwrite all the hooks in .git/hooks. Are you sure? [Y/N]",
             )? {
-                conf.init(&[
-                    HookEvent::ApplyPatchMsg,
-                    HookEvent::CommitMsg,
-                    HookEvent::PostCommit,
-                    HookEvent::PostUpdate,
-                    HookEvent::PreApplyPatch,
-                    HookEvent::PreCommit,
-                    HookEvent::PreMergeCommit,
-                    HookEvent::PrePush,
-                    HookEvent::PreRebase,
-                    HookEvent::PreReceive,
-                    HookEvent::PrepareCommitMsg,
-                    HookEvent::Update,
-                ])?;
+                conf.init(ALL_HOOK_EVENTS)?;
                 println!("I have init'd myself successfully! 🚀");
             } else {
                 println!("Operation cancelled by user.");
