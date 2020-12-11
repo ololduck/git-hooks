@@ -1,7 +1,7 @@
 = Git Hook Manager
 Paul Ollivier <contact@paulollivier.fr>
 
-This project is an attempt to provide a way to share easily https://git-scm.com/book/en/v2/Customizing-Git-Git-Hooks[git hooks].
+This project is an attempt to provide a way to easily share https://git-scm.com/book/en/v2/Customizing-Git-Git-Hooks[git hooks].
 
 In many teams, we rely on a full suite of tooling, and the need to share code conventions and quality standards.
 
@@ -14,6 +14,64 @@ This tool is still in its prototyping phase, and will most likely hurt children,
 You have been warned.
 ====
 
+== Installation
+
+Grab yourself a copy from https://github.com/paulollivier/git-hooks/releases/latest[the latest release page], `chmod +x` it, and put it in one of the directories in your `$PATH`.
+May I recommend `~/.local/bin`?
+
+Or, if you have cargo: `cargo install git-hooks`.
+In this case, the binary will be found in `~/.cargo/bin`.
+
+== Usage
+
+[source]
+----
+$ git-hooks --help
+git-hooks
+Paul Ollivier <contact@paulollivier.fr>
+A git hooks manager
+
+USAGE:
+    git-hooks [SUBCOMMAND]
+
+FLAGS:
+    -h, --help       Prints help information
+    -V, --version    Prints version information
+
+SUBCOMMANDS:
+    help    Prints this message or the help of the given subcommand(s)
+    init    Install the git hooks in .git/hooks
+    run     Runs the configured hooks for a given event
+----
+
+If you are starting a new project, or at least trying `git-hooks` on a new project, you should run `git-hooks init`.
+This will setup the project to run `git-hooks` on git events.
+
+If you want to run a hook collection manually, you can call `git-hooks run <event>`:
+
+[source,shell]
+----
+git-hooks-run
+Runs the configured hooks for a given event
+
+USAGE:
+    git-hooks run <event>
+
+FLAGS:
+    -h, --help       Prints help information
+    -V, --version    Prints version information
+
+ARGS:
+    <event>    Runs the hook for the given event, eg. "pre-commit", "post-commit"… [possible values: apply-patch-
+               msg, commit-msg, post-commit, post-update, pre-apply-patch, pre-commit, pre-merge-commit,
+               pre-push, pre-rebase, pre-receive, prepare-commit-msg, update]
+
+----
+
+=== Using & writing hooks
+
+This is covered in link:hooks.adoc[it's own page].
+
 == Design doc
 
 I am convinced Rust is the language to go regarding system tooling, for its performance and error handling design.
@@ -24,7 +82,7 @@ The solution has 3 parts:
 - Multiple hook repositories containing code to set up and use a variety of tools.
 For instance, a `rust` repository may contain the definitions of a `rustfmt`, `cargo check`, or even `cargo test` hook.
 - The binary provided by the code alongside the document you are reading right now.
-This binary needs to handle reading the repos' config file, downloading the hook repositories, and apply them on the proper git events (`pre-commit`, `post-commit`, `pre-index`, …)
+This binary needs to handle reading the repos' config file, downloading the hook repositories, and apply them on the proper git events (`pre-commit`, `post-commit`, …)
 
 === The `.hooks.yml` file
 

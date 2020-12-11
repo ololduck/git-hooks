@@ -1,0 +1,50 @@
+= Hooks
+
+== Using hooks
+
+At the root of your repository, create a `.hooks.yml` file.
+You can find the one for this repository link:.hooks.yml[here].
+It has two main sections: `repos` and `hooks`.
+
+`repos` defines which valid git URL to contact to get hook definitions.
+`hooks` lets you choose which hooks to use.
+
+..hooks.yml
+[source,yaml]
+----
+repos:
+  - url: https://github.com/paulollivier/rust-hooks
+
+hooks:
+  - name: cargofmt
+  - name: cargocheck
+----
+
+=== List of available hooks
+
+Feel free to expand this list via a https://github.com/paulollivier/git-hooks/issues/new?title=New%20hook%20repository[github issue]
+
+* https://github.com/paulollivier/rust-hooks/
+
+== Writing hooks
+
+This requires 2 things: a git repository, and a file inside it named `hooks.yml`.
+Not to be confused with `.hooks.yml`, which is for client configuration...
+
+=== The hooks.yml file
+
+.hooks.yml
+[source,yaml]
+----
+
+# begins by the root element, `hooks`
+hooks:
+  - name: rustfmt # a name
+
+    on_event: # an event list to react to. defaults to pre-commit, if absent
+      - pre-commit
+    on_file_regex: # a list of file regexps. defaults to .*
+      - .*\.rs
+    action: "rustfmt {files}" # the action (cli) to perform.
+    setup_script: rustfmt_setup.sh # an optional setup script
+----
