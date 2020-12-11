@@ -3,3 +3,4 @@ repos:
 
 hooks:
   - name: cargofmt
+  - name: cargocheck

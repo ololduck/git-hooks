@@ -48,6 +48,25 @@ pub fn pull(source: &str, target: &str) -> anyhow::Result<String> {
     Ok(stdout)
 }
 
+pub fn add<T: AsRef<str>>(files: &[T]) -> anyhow::Result<()> {
+    let mut args = vec!["add"];
+    for x in files {
+        args.push(x.as_ref());
+    }
+    let (_status, _stdout, _stderr) = git_command(&args, Some(&root()?))?;
+    Ok(())
+}
+
+pub fn changed_files(in_index: bool) -> anyhow::Result<Vec<String>> {
+    let mut args = vec!["diff", "--name-only", "--diff-filter=ACM"];
+    if in_index {
+        args.push("--cached");
+    }
+    //git diff --cached --name-only --diff-filter=ACM
+    let (_status, stdout, _stderr) = git_command(&args, Some(&root()?))?;
+    Ok(stdout.lines().map(|s| String::from(s)).collect())
+}
+
 /// Returns the root of the repository.
 /// If executed in /tmp/my-repo/src, returns /tmp/my-repo
 pub fn root() -> anyhow::Result<String> {

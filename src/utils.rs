@@ -1,14 +1,14 @@
-use std::{env, fs};
 use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::fmt::{Debug, Display};
 use std::io::Read;
 use std::path::Path;
 use std::process::{Command, ExitStatus, Stdio};
+use std::{env, fs};
 
 use log::{debug, error};
 use regex::Regex;
-use walkdir::{DirEntry, WalkDir};
+use walkdir::WalkDir;
 
 use crate::git;
 
@@ -78,7 +78,7 @@ pub fn get_local_repo_path(url: &str) -> anyhow::Result<String> {
     ))
 }
 
-fn _matches<T: AsRef<str> + Display>(e: &Path, regexps: &[T]) -> bool {
+pub fn matches<T: AsRef<str> + Display>(e: &Path, regexps: &[T]) -> bool {
     let dot_git_re = Regex::new("\\.git/*").expect("invalid git regex");
     if e.is_dir() {
         debug!("skipping dir {}", e.display());
@@ -109,7 +109,7 @@ pub fn get_files<T: AsRef<str> + Display>(
         .filter_map(Result::ok)
         .filter(|e| {
             debug!("trying file {}", e.path().display());
-            _matches(e.path(), regexps)
+            matches(e.path(), regexps)
         })
         .map(|e| {
             debug!("Adding file {:?}", e);

@@ -1,16 +1,16 @@
 use std::collections::HashMap;
 use std::env;
 use std::fs::{File, Permissions};
-use std::io::{Read, Write};
-use std::mem::zeroed;
+use std::io::{stdin, stdout, Read, Write};
 use std::os::unix::fs::PermissionsExt;
+use std::path::Path;
 
-use clap::{App, Arg, ArgMatches, SubCommand};
+use clap::{App, Arg, SubCommand};
 use log::{debug, error, info, warn};
 use serde::{Deserialize, Serialize};
 use shlex::Shlex;
 
-use crate::utils::{execute_cmd, get_files, get_local_repo_path, prefix_path};
+use crate::utils::{execute_cmd, get_files, get_local_repo_path, matches, prefix_path};
 
 mod git;
 mod utils;
@@ -46,21 +46,51 @@ impl ActionFileToken {
 #[derive(Deserialize, Serialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "kebab-case")]
 enum HookEvent {
-    PreCommit,
+    ApplyPatchMsg,
+    CommitMsg,
     PostCommit,
+    PostUpdate,
+    PreApplyPatch,
+    PreCommit,
+    PreMergeCommit,
+    PrePush,
+    PreRebase,
+    PreReceive,
+    PrepareCommitMsg,
+    Update,
 }
 
 impl HookEvent {
     fn to_kebab_case(&self) -> &'static str {
         match self {
-            HookEvent::PreCommit => "pre-commit",
+            HookEvent::ApplyPatchMsg => "apply-patch-msg",
+            HookEvent::CommitMsg => "commit-msg",
             HookEvent::PostCommit => "post-commit",
+            HookEvent::PostUpdate => "post-update",
+            HookEvent::PreApplyPatch => "pre-apply-patch",
+            HookEvent::PreCommit => "pre-commit",
+            HookEvent::PreMergeCommit => "pre-merge-commit",
+            HookEvent::PrePush => "pre-push",
+            HookEvent::PreRebase => "pre-rebase",
+            HookEvent::PreReceive => "pre-receive",
+            HookEvent::PrepareCommitMsg => "prepare-commit-msg",
+            HookEvent::Update => "update",
         }
     }
     fn from_kebab_case(s: &str) -> Option<Self> {
         match s {
-            "pre-commit" => Some(HookEvent::PreCommit),
+            "apply-patch-msg" => Some(HookEvent::ApplyPatchMsg),
+            "commit-msg" => Some(HookEvent::CommitMsg),
             "post-commit" => Some(HookEvent::PostCommit),
+            "post-update" => Some(HookEvent::PostUpdate),
+            "pre-apply-patch" => Some(HookEvent::PreApplyPatch),
+            "pre-commit" => Some(HookEvent::PreCommit),
+            "pre-merge-commit" => Some(HookEvent::PreMergeCommit),
+            "pre-push" => Some(HookEvent::PrePush),
+            "pre-rebase" => Some(HookEvent::PreRebase),
+            "pre-receive" => Some(HookEvent::PreReceive),
+            "prepare-commit-msg" => Some(HookEvent::PrepareCommitMsg),
+            "update" => Some(HookEvent::Update),
             _ => None,
         }
     }
@@ -78,6 +108,7 @@ struct Hook {
 
 fn run_hook(hook: &Hook, hook_repo_path: &str) -> anyhow::Result<()> {
     let root = git::root().expect("Could not get git root.");
+    let mut should_run = true;
     // expand PATH
     let mut bin_path = env::var("PATH").expect("PATH is not set in the env.");
     bin_path.push_str(&format!("{}:", hook_repo_path));
@@ -103,17 +134,31 @@ fn run_hook(hook: &Hook, hook_repo_path: &str) -> anyhow::Result<()> {
                         &hook
                             .on_file_regex
                             .as_ref()
-                            .unwrap_or(&vec!["*".to_string()]),
+                            .unwrap_or(&vec![".*".to_string()]),
                     )?;
-                    // TODO: find a way to cancel execution if `files` is empty
+                    should_run = !files.is_empty();
                     final_args.append(&mut files);
                 }
                 ActionFileToken::File => {
                     unimplemented!("we should check for the token before, as it changes the whole execution logic");
                 }
                 ActionFileToken::ChangedFiles => {
-                    // TODO: implement me
-                    unimplemented!();
+                    let mut changed_files: Vec<String> = git::changed_files(true)?
+                        .iter()
+                        .map(|f| Path::new(f))
+                        .filter(|p| {
+                            matches(
+                                p,
+                                &(*hook
+                                    .on_file_regex
+                                    .as_ref()
+                                    .unwrap_or(&vec![".*".to_string()])),
+                            )
+                        })
+                        .map(|p| p.display().to_string())
+                        .collect();
+                    should_run = !changed_files.is_empty();
+                    final_args.append(&mut changed_files);
                 }
                 ActionFileToken::ChangedFile => {
                     // TODO: implement me
@@ -124,12 +169,38 @@ fn run_hook(hook: &Hook, hook_repo_path: &str) -> anyhow::Result<()> {
                 }
             }
         } else {
-            final_args.push(arg.to_string());
+            if should_run {
+                final_args.push(arg.to_string());
+            } else {
+                info!("Could find any files to run hook on");
+            }
         }
     }
-    execute_cmd(&cmd, &final_args, Some(&root), Some(&env))?;
-    debug!("finished executing {}", cmd);
-    Ok(())
+    let (s, _, _) = execute_cmd(&cmd, &final_args, Some(&root), Some(&env))?;
+    debug!(
+        "finished executing {} with exit status {}",
+        cmd,
+        s.code().unwrap()
+    );
+    if !s.success() {
+        Err(anyhow::Error::msg(format!(
+            "{:?} reported execution failure: {:?}",
+            hook,
+            s.code()
+        )))
+    } else {
+        let index_files = git::changed_files(true)?;
+        let changed_files = git::changed_files(false)?;
+        let files_to_re_add: Vec<&String> = changed_files
+            .iter()
+            .filter(|f| index_files.contains(f))
+            .collect();
+        if !files_to_re_add.is_empty() {
+            debug!("we must re-add those files: {:#?}", files_to_re_add);
+            git::add(&files_to_re_add)?;
+        }
+        Ok(())
+    }
 }
 
 #[derive(Deserialize, Serialize, Debug, Default)]
@@ -183,8 +254,15 @@ struct HookConfig {
 impl HookConfig {
     fn from_file(filename: Option<&str>) -> anyhow::Result<HookConfig> {
         let mut conf_content = String::new();
-        // TODO: return meaningful error message on config file absence.
-        File::open(filename.unwrap_or(".hooks.yml"))?.read_to_string(&mut conf_content)?;
+        let p = filename.unwrap_or(".hooks.yml");
+        match File::open(p) {
+            Ok(mut f) => {
+                f.read_to_string(&mut conf_content)?;
+            }
+            Err(e) => {
+                error!("could not read config file {}: {}", p, e);
+            }
+        }
         let mut conf: HookConfig = serde_yaml::from_str(&conf_content)?;
         debug!("{:?}", conf);
         conf.repos
@@ -205,7 +283,6 @@ impl HookConfig {
 
     /// Installs itself as a hook
     fn init(self, events: &[HookEvent]) -> anyhow::Result<()> {
-        // TODO: ask for user confirmation
         for event in events {
             let mut hook_script = File::create(format!(
                 "{}/.git/hooks/{}",
@@ -214,11 +291,22 @@ impl HookConfig {
             ))?;
             hook_script.set_permissions(Permissions::from_mode(0o755))?;
             hook_script.write_all(
-                format!("#!/bin/bash\ngit-hooks run --{}\n", event.to_kebab_case()).as_bytes(),
+                format!("#!/bin/bash -e\ngit-hooks run {}\n", event.to_kebab_case()).as_bytes(),
             )?;
         }
         Ok(())
     }
+}
+
+fn ask_for_user_confirmation(prompt: &str) -> anyhow::Result<bool> {
+    print!("{}: ", prompt);
+    stdout().flush();
+    let mut input = String::new();
+    stdin().read_line(&mut input)?;
+    Ok(match input.trim() {
+        "Y" | "y" => true,
+        _ => false,
+    })
 }
 
 fn main() -> anyhow::Result<()> {
@@ -226,7 +314,7 @@ fn main() -> anyhow::Result<()> {
     debug!("reading conf");
     let conf = HookConfig::from_file(None)?;
     let active_hooks_names: Vec<String> = conf.hooks.iter().map(|h| h.name.clone()).collect();
-    debug!("merged conf: {:?}", conf);
+    debug!("merged conf: {:#?}", conf);
     let app = App::new("git-hooks")
         .author("Paul Ollivier <contact@paulollivier.fr>")
         .about("A git hooks manager")
@@ -246,13 +334,20 @@ fn main() -> anyhow::Result<()> {
     debug!("{:?}", matches);
     match matches.subcommand() {
         ("init", _) => {
-            // todo: implement me properly
-            conf.init(&[HookEvent::PreCommit, HookEvent::PostCommit])?;
+            if ask_for_user_confirmation(
+                "This will overwrite all the hooks in .git/hooks. Are you sure? [Y/N]",
+            )? {
+                conf.init(&[HookEvent::PreCommit, HookEvent::PostCommit])?;
+                println!("I have init'd myself successfully! 🚀");
+            } else {
+                println!("Operation cancelled by user.");
+            }
         }
         ("run", args) => {
             if let Some(arg_matches) = args {
                 if let Some(event) = arg_matches.value_of("event") {
                     let mut has_executed_hook = false;
+                    let mut had_error = false;
                     let event = HookEvent::from_kebab_case(event).expect(
                         "Could not unwrap event, although it should be present, thanks to clap",
                     );
@@ -263,10 +358,7 @@ fn main() -> anyhow::Result<()> {
                                 .iter()
                                 // filter hooks with the right event
                                 .filter(|&hook| {
-                                    if let Some(events) = &(*hook).on_event {
-                                        return events.contains(&event);
-                                    }
-                                    false
+                                    (*hook).on_event.as_ref().unwrap_or(&vec![HookEvent::PreCommit]).contains(&event)
                                 })
                                 // filter hooks with their IDs present.
                                 .filter(|&hook| {
@@ -281,6 +373,7 @@ fn main() -> anyhow::Result<()> {
                                             "An error occurred while executing {}: {}",
                                             hook.name, e
                                         );
+                                        had_error = true;
                                     }
                                     has_executed_hook = true;
                                 }).for_each(drop);
@@ -288,6 +381,9 @@ fn main() -> anyhow::Result<()> {
                         .for_each(drop);
                     if !has_executed_hook {
                         info!("Nothing to do.");
+                    }
+                    if had_error {
+                        return Err(anyhow::Error::msg("a hook reported malfunction"));
                     }
                 }
             }
