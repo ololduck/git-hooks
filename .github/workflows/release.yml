@@ -33,3 +33,6 @@ jobs:
           asset_name: git-hooks-linux-amd64
           tag: ${{ steps.tagName.outputs.tag }}
           overwrite: true
+      - uses: katyo/publish-crates@v1
+        with:
+          registry-token: ${{ secrets.CARGO_REGISTRY_TOKEN }}
