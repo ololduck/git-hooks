@@ -19,7 +19,7 @@ You have been warned.
 Grab yourself a copy from https://github.com/paulollivier/git-hooks/releases/latest[the latest release page], `chmod +x` it, and put it in one of the directories in your `$PATH`.
 May I recommend `~/.local/bin`?
 
-Or, if you have cargo: `cargo install git-hooks`.
+Or, if you have cargo: `cargo install git-hooks-manager`.
 In this case, the binary will be found in `~/.cargo/bin`.
 
 == Usage
