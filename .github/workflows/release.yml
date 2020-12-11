@@ -14,7 +14,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
       - name: Build project
-        run: cargo build --release --locked
+        run: cargo build --release
       - name: Bump version and push tag/create release point
         uses: anothrNick/github-tag-action@1.17.2
         env:
