@@ -21,7 +21,7 @@ jobs:
 #          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 #          WITH_V: true
 #        id: bump_version
-      - uses: olegtarasov/get-tag@v2
+      - uses: little-core-labs/get-git-tag@v3.0.1
         id: tagName
         with:
           tagRegex: "(v.*)"  # Optional. Returns specified group text as tag name. Full tag string is returned if regex is not defined.
