@@ -90,7 +90,8 @@ pub fn matches<T: AsRef<str> + Display>(e: &Path, regexps: &[T]) -> bool {
         return false;
     }
     for regex in regexps {
-        let r = Regex::new(regex.as_ref()).expect(&format!("invalid regex: {}", regex));
+        let r =
+            Regex::new(regex.as_ref()).unwrap_or_else(|regex| panic!("invalid regex: {}", regex));
         if r.is_match(&e.display().to_string()) {
             debug!("Found matching file {}", e.display());
             return true;
