@@ -31,6 +31,8 @@ Feel free to expand this list via a https://github.com/paulollivier/git-hooks/is
 This requires 2 things: a git repository, and a file inside it named `hooks.yml`.
 Not to be confused with `.hooks.yml`, which is for client configuration...
 
+A good sample hook definition repo is https://github.com/paulollivier/rust-hooks/[rust-hooks].
+
 === The hooks.yml file
 
 .hooks.yml
@@ -48,3 +50,25 @@ hooks:
     action: "rustfmt {files}" # the action (cli) to perform.
     setup_script: rustfmt_setup.sh # an optional setup script
 ----
+
+The `{files}` string seen above is a replacement token.
+This string will be substituted to appropriate context-dependant values.
+The following tables details the available replacement tokens.
+
+[cols="1,3,3", options="header"]
+.Replacement tokens
+|===
+| token | replaced by | example
+
+| {files}
+| all repository files matching any of `on_file_regex`
+| rustfmt {files} => rustfmt /home/paul/dev/my-repo/src/main.rs /home/paul/dev/my-repo/src/utils.rs
+
+| {changed_files}
+| all repository files currently in the git index matching any of `on_file_regex`
+| rustfmt {changed_files} => rustfmt /home/paul/dev/my-repo/src/main.rs
+
+| {root}
+| the path to the root of the current repository
+| rustfmt {root} => rustfmt /home/paul/dev/my-repo
+|===
