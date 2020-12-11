@@ -303,7 +303,11 @@ fn ask_for_user_confirmation(prompt: &str) -> anyhow::Result<bool> {
     stdin().read_line(&mut input)?;
     Ok(match input.trim() {
         "Y" | "y" => true,
-        _ => false,
+        "N" | "n" => false,
+        _ => {
+            println!("Incorrect input. Try again.");
+            ask_for_user_confirmation(prompt)?
+        }
     })
 }
 
