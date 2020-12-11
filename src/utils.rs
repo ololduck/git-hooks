@@ -79,7 +79,8 @@ pub fn get_local_repo_path(url: &str) -> anyhow::Result<String> {
 }
 
 pub fn matches<T: AsRef<str> + Display>(e: &Path, regexps: &[T]) -> bool {
-    let dot_git_re = Regex::new("\\.git/*").expect("invalid git regex");
+    let dot_git_re =
+        Regex::new("\\.git/*").unwrap_or_else(|regex| panic!("invalid regex: {}", regex));
     if e.is_dir() {
         debug!("skipping dir {}", e.display());
         return false;

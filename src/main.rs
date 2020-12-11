@@ -339,7 +339,20 @@ fn main() -> anyhow::Result<()> {
             if ask_for_user_confirmation(
                 "This will overwrite all the hooks in .git/hooks. Are you sure? [Y/N]",
             )? {
-                conf.init(&[HookEvent::PreCommit, HookEvent::PostCommit])?;
+                conf.init(&[
+                    HookEvent::ApplyPatchMsg,
+                    HookEvent::CommitMsg,
+                    HookEvent::PostCommit,
+                    HookEvent::PostUpdate,
+                    HookEvent::PreApplyPatch,
+                    HookEvent::PreCommit,
+                    HookEvent::PreMergeCommit,
+                    HookEvent::PrePush,
+                    HookEvent::PreRebase,
+                    HookEvent::PreReceive,
+                    HookEvent::PrepareCommitMsg,
+                    HookEvent::Update,
+                ])?;
                 println!("I have init'd myself successfully! 🚀");
             } else {
                 println!("Operation cancelled by user.");
