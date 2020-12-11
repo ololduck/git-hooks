@@ -1,8 +1,19 @@
 [package]
-name = "git-hooks"
-version = "0.1.0"
+name = "git-hooks-manager"
+version = "0.2.0"
 authors = ["Paul Ollivier <contact@paulollivier.fr>"]
 edition = "2018"
+description = "An attempt to make sharing git hooks among team members easier"
+readme = "README.adoc"
+repository = "https://github.com/paulollivier/git-hooks"
+license = "GPL-3.0-or-later"
+license-file = "LICENSE.md"
+categories = ["command-line-utilities", "development-tools"]
+keywords = ["git", "teamwork"]
+
+[[bin]]
+name = "git-hooks"
+path = "src/main.rs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
