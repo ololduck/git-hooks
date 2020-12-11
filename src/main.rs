@@ -300,7 +300,7 @@ impl HookConfig {
 
 fn ask_for_user_confirmation(prompt: &str) -> anyhow::Result<bool> {
     print!("{}: ", prompt);
-    stdout().flush();
+    stdout().flush()?;
     let mut input = String::new();
     stdin().read_line(&mut input)?;
     Ok(match input.trim() {

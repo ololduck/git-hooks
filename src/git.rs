@@ -44,7 +44,7 @@ pub fn pull(source: &str, target: &str) -> anyhow::Result<String> {
     if !(target_dir.exists() && target_dir.is_dir()) {
         return clone(source, target);
     }
-    let (_status, stdout, _stderr) = git_command(&["pull"], Some(target.as_ref()))?;
+    let (_status, stdout, _stderr) = git_command(&["pull"], Some(target))?;
     Ok(stdout)
 }
 
@@ -64,7 +64,7 @@ pub fn changed_files(in_index: bool) -> anyhow::Result<Vec<String>> {
     }
     //git diff --cached --name-only --diff-filter=ACM
     let (_status, stdout, _stderr) = git_command(&args, Some(&root()?))?;
-    Ok(stdout.lines().map(|s| String::from(s)).collect())
+    Ok(stdout.lines().map(|s| s.to_string()).collect())
 }
 
 /// Returns the root of the repository.

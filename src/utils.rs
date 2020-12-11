@@ -51,12 +51,12 @@ pub fn execute_cmd<T: AsRef<str> + AsRef<OsStr> + Debug>(
     }
     debug!("cmd stderr: {}", stdout);
     let res = cmd.wait();
-    if res.is_err() {
+    if let Err(r) = res {
         error!(
             "Error on \"{} {:?}\" invocation, here's the output:\nstdout: {}\nstderr: {}",
             bin, args, stdout, stderr
         );
-        return Err(anyhow::Error::new(res.unwrap_err()));
+        return Err(anyhow::Error::new(r));
     }
     let status = res.unwrap();
     if !status.success() {
@@ -74,7 +74,7 @@ pub fn get_local_repo_path(url: &str) -> anyhow::Result<String> {
         "{}/{}/{}",
         git::root()?,
         HOOK_REPOS_SAVE_LOCATION,
-        url.split("/").last().expect("incomplete repo URL?")
+        url.split('/').last().expect("incomplete repo URL?")
     ))
 }
 
@@ -121,9 +121,9 @@ pub fn get_files<T: AsRef<str> + Display>(
 }
 
 /// Returns true if the given program name can be found in $PATH
-pub fn is_program_in_path(program: &str) -> bool {
+pub fn _is_program_in_path(program: &str) -> bool {
     if let Ok(path) = env::var("PATH") {
-        for p in path.split(":") {
+        for p in path.split(':') {
             let p_str = format!("{}/{}", p, program);
             if fs::metadata(p_str).is_ok() {
                 return true;
