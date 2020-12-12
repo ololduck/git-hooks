@@ -18,6 +18,9 @@ repos:
 hooks:
   - name: cargofmt
   - name: cargocheck
+    on_event: # Hooks general config may be overridden
+      - pre-commit
+      - pre-push
 ----
 
 === List of available hooks

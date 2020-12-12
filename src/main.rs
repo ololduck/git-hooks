@@ -15,6 +15,37 @@ use crate::utils::{execute_cmd, get_files, get_local_repo_path, matches, prefix_
 mod git;
 mod utils;
 
+#[cfg(test)]
+mod tests {
+    use crate::{ExternalHookRepo, Hook, HookConfig, HookEvent};
+
+    #[test]
+    fn test_merge() {
+        let mut conf = HookConfig {
+            hooks: vec![Hook {
+                name: "test1".to_string(),
+                on_event: None,
+                on_file_regex: None,
+                action: Some("exe2".to_string()),
+                setup_script: None,
+            }],
+            repos: vec![ExternalHookRepo {
+                url: "dummy".to_string(),
+                hooks: vec![Hook {
+                    name: "test1".to_string(),
+                    on_event: Some(vec![HookEvent::PreCommit]),
+                    on_file_regex: Some(vec![".*".to_string()]),
+                    action: Some("exe1".to_string()),
+                    setup_script: Some("hello.sh".to_string()),
+                }],
+            }],
+        };
+        assert_ne!(conf.hooks[0].action, conf.repos[0].hooks[0].action);
+        conf.update_repos_config();
+        assert_eq!(conf.hooks[0].action, conf.repos[0].hooks[0].action);
+    }
+}
+
 /// Represents the possible placeholders to be substituted to actual file values.
 /// The singular variants mean that the action is to be executed for each file found.
 enum ActionFileToken {
@@ -43,7 +74,7 @@ impl ActionFileToken {
     }
 }
 
-#[derive(Deserialize, Serialize, Debug, Eq, PartialEq)]
+#[derive(Deserialize, Serialize, Debug, Eq, PartialEq, Copy, Clone)]
 #[serde(rename_all = "kebab-case")]
 enum HookEvent {
     ApplyPatchMsg,
@@ -119,6 +150,34 @@ struct Hook {
     on_file_regex: Option<Vec<String>>,
     action: Option<String>,
     setup_script: Option<String>,
+}
+
+impl Clone for Hook {
+    fn clone(&self) -> Self {
+        let mut h = Hook::default();
+        h.name = self.name.clone();
+        if let Some(self_on_event) = &self.on_event {
+            let mut on_event = Vec::new();
+            for e in self_on_event {
+                on_event.push(*e);
+            }
+            h.on_event = Some(on_event);
+        }
+        if let Some(regex) = &self.on_file_regex {
+            let mut on_file_regex = Vec::new();
+            for r in regex {
+                on_file_regex.push(r.clone());
+            }
+            h.on_file_regex = Some(on_file_regex);
+        }
+        if let Some(action) = &self.action {
+            h.action = Some(action.clone());
+        }
+        if let Some(setup_script) = &self.setup_script {
+            h.setup_script = Some(setup_script.clone());
+        }
+        h
+    }
 }
 
 fn run_hook(hook: &Hook, hook_repo_path: &str) -> anyhow::Result<()> {
@@ -277,6 +336,7 @@ impl HookConfig {
             }
         }
         let mut conf: HookConfig = serde_yaml::from_str(&conf_content)?;
+        conf.update_repos_config();
         debug!("{:?}", conf);
         conf.repos
             .iter_mut()
@@ -309,6 +369,41 @@ impl HookConfig {
         }
         //TODO: create .hooks.yml if not existing?
         Ok(())
+    }
+
+    /// finds defined values in the hook definitions, and overrides the definitions in repos
+    fn update_repos_config(&mut self) {
+        // TODO error[E0500]: closure requires unique access to `self` but it is already borrowed
+        let hooks = &self.hooks;
+        self.repos
+            .iter_mut()
+            .map(|repo| {
+                repo.hooks
+                    .iter_mut()
+                    .map(|h| {
+                        let hooks: Vec<&Hook> =
+                            hooks.iter().filter(|hook| hook.name == h.name).collect();
+                        if !hooks.is_empty() {
+                            let hook = hooks[0];
+                            if h.name == hook.name {
+                                if let Some(on_event) = &hook.on_event {
+                                    h.on_event = Some(on_event.clone());
+                                }
+                                if let Some(on_file_regex) = &hook.on_file_regex {
+                                    h.on_file_regex = Some(on_file_regex.clone());
+                                }
+                                if let Some(action) = &hook.action {
+                                    h.action = Some(action.clone());
+                                }
+                                if let Some(setup_script) = &hook.setup_script {
+                                    h.setup_script = Some(setup_script.clone());
+                                }
+                            }
+                        }
+                    })
+                    .for_each(drop);
+            })
+            .for_each(drop);
     }
 }
 
