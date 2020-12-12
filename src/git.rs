@@ -11,14 +11,13 @@ use crate::utils;
 #[cfg(test)]
 mod tests {
     use crate::git::{add, changed_files, checkout, clone, git_command, root};
-    use anyhow::Result;
     use std::env::{current_dir, set_current_dir};
-    use std::fs::{remove_dir_all, File};
+    use std::fs::File;
     use std::path::Path;
     use tempdir::TempDir;
 
     fn setup() -> TempDir {
-        pretty_env_logger::try_init();
+        let _ = pretty_env_logger::try_init();
         TempDir::new("git-hooks-tests").expect("could not create temp dir")
     }
 
@@ -27,7 +26,7 @@ mod tests {
         let _ = setup();
         let r = git_command(&["--version"], None);
         assert!(r.is_ok());
-        let (s, out, err) = r.unwrap();
+        let (s, out, _err) = r.unwrap();
         assert!(s.success());
         assert!(out.starts_with("git version "));
     }
@@ -47,7 +46,7 @@ mod tests {
     #[test]
     fn test_checkout() {
         let dir = setup();
-        clone(
+        let _ = clone(
             "https://github.com/paulollivier/git-hooks",
             dir.path().display().to_string(),
         );
@@ -58,7 +57,7 @@ mod tests {
             Some(dir.path().display().to_string().as_str()),
         );
         assert!(r.is_ok());
-        let (s, out, err) = r.unwrap();
+        let (s, out, _err) = r.unwrap();
         assert!(s.success());
         assert_eq!(out.trim(), "99586a59496151167dc730c62d5405d7a6401bf6"); // hash of the v0.3.0 tag
     }
@@ -66,7 +65,7 @@ mod tests {
     #[test]
     fn test_adding_files() {
         let dir = setup();
-        clone(
+        let _ = clone(
             "https://github.com/paulollivier/git-hooks",
             dir.path().display().to_string(),
         );
@@ -85,13 +84,13 @@ mod tests {
         assert!(r.is_ok());
         let files = r.unwrap();
         assert!(files.contains(&"tests.txt".to_string()));
-        set_current_dir(old_dir);
+        set_current_dir(old_dir).expect("could not cd back to old dir");
     }
 
     #[test]
     fn test_root() {
         let dir = setup();
-        clone(
+        let _ = clone(
             "https://github.com/paulollivier/git-hooks",
             dir.path().display().to_string(),
         );
@@ -101,6 +100,7 @@ mod tests {
         assert!(r.is_ok());
         let d = r.unwrap();
         assert_eq!(dir.path().display().to_string(), d);
+        set_current_dir(old_dir).expect("could not cd back to old dir");
     }
 }
 

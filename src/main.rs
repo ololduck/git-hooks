@@ -52,7 +52,7 @@ mod tests {
     fn test_external_repo_with_version() {
         let dir = TempDir::new("git-hooks-tests").expect("could not create tempdir");
         let old_dir = current_dir().expect("could not get current dir");
-        set_current_dir(dir.path());
+        set_current_dir(dir.path()).expect("could not cd to temp dir");
         git::init(None).expect("could not init repo");
         let mut er = ExternalHookRepo {
             url: "https://github.com/paulollivier/rust-hooks".to_string(),
@@ -67,7 +67,7 @@ mod tests {
             .join("hook-repos")
             .join("rust-hooks");
         assert!(cloned_dir.join("hooks.yml").exists());
-        set_current_dir(cloned_dir);
+        set_current_dir(cloned_dir).expect("could not cd to cloned dir");
         let r = git::get_hash("HEAD");
         assert!(r.is_ok());
         assert_eq!(
