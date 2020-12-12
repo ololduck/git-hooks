@@ -34,10 +34,7 @@ mod tests {
     #[test]
     fn test_clone() {
         let dir = setup();
-        let r = clone(
-            "https://github.com/paulollivier/git-hooks",
-            dir.path().display().to_string(),
-        );
+        let r = clone(".", dir.path().display().to_string());
         assert!(r.is_ok());
         let p = r.unwrap();
         assert_eq!(p, dir.path().display().to_string());
@@ -46,10 +43,7 @@ mod tests {
     #[test]
     fn test_checkout() {
         let dir = setup();
-        let _ = clone(
-            "https://github.com/paulollivier/git-hooks",
-            dir.path().display().to_string(),
-        );
+        let _ = clone(".", dir.path().display().to_string());
         let r = checkout("v0.3.0", dir.path().display().to_string().as_str());
         assert!(r.is_ok());
         let r = git_command(
@@ -65,10 +59,7 @@ mod tests {
     #[test]
     fn test_adding_files() {
         let dir = setup();
-        let _ = clone(
-            "https://github.com/paulollivier/git-hooks",
-            dir.path().display().to_string(),
-        );
+        let _ = clone(".", dir.path().display().to_string());
         let f = File::create(dir.path().join("tests.txt"));
         assert!(f.is_ok());
         let old_dir = current_dir().expect("could not unwrap current_dir");
