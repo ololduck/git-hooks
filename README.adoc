@@ -139,9 +139,9 @@ hooks:
 ** [x] pull repos
 ** [ ] checkout a specific hook repo revision
 * [x] init the hook repos (execute their setup script)
-* [ ] `.hooks.yml` hooks section overrides `hooks.yml` definition if set
+* [x] `.hooks.yml` hooks section overrides `hooks.yml` definition if set
 * [x] set itself up as to be executed on git events
 ** [x] (partial impl.) handle multiple args arguments, such as `{file}`, `{files}`, `{root}`, `{changed_files}`
 ** [x] restrict execution to specified file regexps
-** [ ] run only when the git index contains the specified file regexps
-* [ ] implement self-update
+** [x] run only when the git index contains the specified file regexps
+* [x] implement self-update

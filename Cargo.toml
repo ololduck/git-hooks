@@ -1,6 +1,6 @@
 [package]
 name = "git-hooks-manager"
-version = "0.3.0"
+version = "0.4.0"
 authors = ["Paul Ollivier <contact@paulollivier.fr>"]
 edition = "2018"
 description = "An attempt to make sharing git hooks among team members easier"
