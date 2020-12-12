@@ -6,7 +6,6 @@ edition = "2018"
 description = "An attempt to make sharing git hooks among team members easier"
 readme = "README.adoc"
 repository = "https://github.com/paulollivier/git-hooks"
-license = "GPL-3.0-or-later"
 license-file = "LICENSE.md"
 categories = ["command-line-utilities", "development-tools"]
 keywords = ["git", "teamwork"]

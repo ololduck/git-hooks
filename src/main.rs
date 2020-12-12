@@ -159,7 +159,7 @@ impl Clone for Hook {
         if let Some(self_on_event) = &self.on_event {
             let mut on_event = Vec::new();
             for e in self_on_event {
-                on_event.push(e.clone());
+                on_event.push(*e);
             }
             h.on_event = Some(on_event);
         }
