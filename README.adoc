@@ -7,13 +7,6 @@ In many teams, we rely on a full suite of tooling, and the need to share code co
 
 This tool tries to unify git hook management via the well-known shared repository dotfiles mechanisms.
 
-[WARN]
-====
-This tool is still in its prototyping phase, and will most likely hurt children, attempt to summon inter-plane beings and damage your git repository
-
-You have been warned.
-====
-
 == Installation
 
 Grab yourself a copy from https://github.com/paulollivier/git-hooks/releases/latest[the latest release page], `chmod +x` it, and put it in one of the directories in your `$PATH`.
@@ -24,6 +17,7 @@ In this case, the binary will be found in `~/.cargo/bin`.
 
 == Usage
 
+.git-hooks binary help page
 [source]
 ----
 $ git-hooks --help
@@ -50,6 +44,7 @@ This will setup the project to run `git-hooks` on git events.
 
 If you want to run a hook collection manually, you can call `git-hooks run <event>`:
 
+.Help text of git-hooks' "run" command
 [source,shell]
 ----
 git-hooks-run

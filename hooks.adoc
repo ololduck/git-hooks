@@ -14,6 +14,9 @@ It has two main sections: `repos` and `hooks`.
 ----
 repos:
   - url: https://github.com/paulollivier/rust-hooks
+    # Optional version. Must be a valid git reference, such as a tag, a branch…
+    # If left unspecified, will use the default branch for the given hook repository
+    version: HEAD
 
 hooks:
   - name: cargofmt
