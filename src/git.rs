@@ -111,6 +111,7 @@ fn git_command<T: AsRef<str> + AsRef<OsStr> + Debug>(
     utils::execute_cmd("git", &args, repo, None)
 }
 
+#[cfg(test)]
 /// inits a new git repo
 /// if `dir` is Some, the repo will be initiated in the given directory. Otherwise, in the current directory.
 pub fn init(dir: Option<&str>) -> anyhow::Result<()> {
@@ -118,6 +119,7 @@ pub fn init(dir: Option<&str>) -> anyhow::Result<()> {
     Ok(())
 }
 
+#[cfg(test)]
 /// returns the commit hash designated by the given `reference`
 pub fn get_hash(reference: &str) -> anyhow::Result<String> {
     let (s, out, err) = git_command(&["rev-parse", reference], None)?;
@@ -150,7 +152,8 @@ pub fn clone<T: AsRef<str>, U: AsRef<str>>(source: T, target: U) -> anyhow::Resu
 }
 
 pub fn checkout(reference: &str, repo: &str) -> anyhow::Result<()> {
-    let (status, stdout, stderr) = git_command(&["rev-parse", "--verify", reference], Some(repo))?;
+    let (status, _stdout, _stderr) =
+        git_command(&["rev-parse", "--verify", reference], Some(repo))?;
     if !status.success() {
         return Err(anyhow::Error::msg(format!(
             "could not find reference {} in {}",

@@ -321,7 +321,7 @@ impl ExternalHookRepo {
         debug!("cloning {} to {}", &self.url, &clone_dir);
         git::pull(&self.url, &clone_dir)?;
         if let Some(v) = &self.version {
-            git::checkout(v, &clone_dir);
+            git::checkout(v, &clone_dir)?;
         }
         let mut repo_config = String::new();
         File::open(format!("{}/{}", clone_dir, "hooks.yml"))?.read_to_string(&mut repo_config)?;
