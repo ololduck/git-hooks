@@ -43,11 +43,11 @@ mod tests {
     #[test]
     fn test_checkout() {
         let dir = setup();
-        let _ = clone(
-            "https://github.com/paulollivier/git-hooks",
-            dir.path().display().to_string(),
+        let _ = clone(".", dir.path().display().to_string());
+        let r = checkout(
+            "99586a59496151167dc730c62d5405d7a6401bf6",
+            dir.path().display().to_string().as_str(),
         );
-        let r = checkout("v0.3.0", dir.path().display().to_string().as_str());
         assert!(r.is_ok());
         let r = git_command(
             &["rev-parse", "HEAD"],
