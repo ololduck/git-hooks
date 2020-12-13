@@ -495,15 +495,14 @@ fn main() -> anyhow::Result<()> {
         );
     let matches = app.get_matches();
     debug!("{:?}", matches);
-    debug!("reading conf");
-    let conf = HookConfig::from_file(None)?;
-    let active_hooks_names: Vec<String> = conf.hooks.iter().map(|h| h.name.clone()).collect();
-    debug!("merged conf: {:#?}", conf);
     match matches.subcommand() {
         ("self-update", _) => {
             update()?;
         }
         ("init", _) => {
+            debug!("reading conf");
+            let conf = HookConfig::from_file(None)?;
+            debug!("merged conf: {:#?}", conf);
             if ask_for_user_confirmation(
                 "This will overwrite all the hooks in .git/hooks. Are you sure? [Y/N]",
             )? {
@@ -514,6 +513,11 @@ fn main() -> anyhow::Result<()> {
             }
         }
         ("run", args) => {
+            debug!("reading conf");
+            let conf = HookConfig::from_file(None)?;
+            let active_hooks_names: Vec<String> =
+                conf.hooks.iter().map(|h| h.name.clone()).collect();
+            debug!("merged conf: {:#?}", conf);
             if let Some(arg_matches) = args {
                 if let Some(event) = arg_matches.value_of("event") {
                     let mut has_executed_hook = false;
