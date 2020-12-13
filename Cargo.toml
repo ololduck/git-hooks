@@ -1,6 +1,6 @@
 [package]
 name = "git-hooks-manager"
-version = "0.4.0"
+version = "0.4.1"
 authors = ["Paul Ollivier <contact@paulollivier.fr>"]
 edition = "2018"
 description = "An attempt to make sharing git hooks among team members easier"
@@ -27,3 +27,6 @@ clap = "2"
 shlex = "0.1.1"
 walkdir = "2.3.1"
 self_update = "0.22.0"
+
+[dev-dependencies]
+tempdir = "0.3.7"

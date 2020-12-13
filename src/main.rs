@@ -17,7 +17,9 @@ mod utils;
 
 #[cfg(test)]
 mod tests {
-    use crate::{ExternalHookRepo, Hook, HookConfig, HookEvent};
+    use crate::{git, ExternalHookRepo, Hook, HookConfig, HookEvent};
+    use std::env::{current_dir, set_current_dir};
+    use tempdir::TempDir;
 
     #[test]
     fn test_merge() {
@@ -38,11 +40,41 @@ mod tests {
                     action: Some("exe1".to_string()),
                     setup_script: Some("hello.sh".to_string()),
                 }],
+                version: None,
             }],
         };
         assert_ne!(conf.hooks[0].action, conf.repos[0].hooks[0].action);
         conf.update_repos_config();
         assert_eq!(conf.hooks[0].action, conf.repos[0].hooks[0].action);
+    }
+
+    #[test]
+    fn test_external_repo_with_version() {
+        let dir = TempDir::new("git-hooks-tests").expect("could not create tempdir");
+        let old_dir = current_dir().expect("could not get current dir");
+        set_current_dir(dir.path()).expect("could not cd to temp dir");
+        git::init(None).expect("could not init repo");
+        let mut er = ExternalHookRepo {
+            url: "https://github.com/paulollivier/rust-hooks".to_string(),
+            version: Some("0e74c2b9c6b1cf4ff36d7eedbee8e8093acacaac".to_string()),
+            hooks: vec![],
+        };
+        let r = er.init();
+        assert!(r.is_ok());
+        let cloned_dir = dir
+            .path()
+            .join(".git")
+            .join("hook-repos")
+            .join("rust-hooks");
+        assert!(cloned_dir.join("hooks.yml").exists());
+        set_current_dir(cloned_dir).expect("could not cd to cloned dir");
+        let r = git::get_hash("HEAD");
+        assert!(r.is_ok());
+        assert_eq!(
+            "0e74c2b9c6b1cf4ff36d7eedbee8e8093acacaac".to_string(),
+            r.unwrap()
+        );
+        set_current_dir(old_dir).expect("could not revert current dir");
     }
 }
 
@@ -280,6 +312,7 @@ fn run_hook(hook: &Hook, hook_repo_path: &str) -> anyhow::Result<()> {
 struct ExternalHookRepo {
     hooks: Vec<Hook>,
     url: String,
+    version: Option<String>,
 }
 
 impl ExternalHookRepo {
@@ -287,6 +320,9 @@ impl ExternalHookRepo {
         let clone_dir = get_local_repo_path(&self.url)?;
         debug!("cloning {} to {}", &self.url, &clone_dir);
         git::pull(&self.url, &clone_dir)?;
+        if let Some(v) = &self.version {
+            git::checkout(v, &clone_dir)?;
+        }
         let mut repo_config = String::new();
         File::open(format!("{}/{}", clone_dir, "hooks.yml"))?.read_to_string(&mut repo_config)?;
         debug!("Got hooks.yml");
@@ -296,7 +332,7 @@ impl ExternalHookRepo {
         self.setup()
     }
 
-    /// runs the eventual setup script
+    /// runs the optional setup scripts
     fn setup(&self) -> anyhow::Result<()> {
         let mut env = HashMap::new();
         env.insert(
