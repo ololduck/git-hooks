@@ -2,6 +2,7 @@ repos:
   - url: https://github.com/paulollivier/rust-hooks
 
 hooks:
-  - name: cargofmt
-  - name: cargocheck
+  - name: cargo fmt
+  - name: cargo check
+  - name: clippy
   - name: version_match
