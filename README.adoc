@@ -132,7 +132,7 @@ hooks:
 * manage hook repos:
 ** [x] clone hooks repos
 ** [x] pull repos
-** [ ] checkout a specific hook repo revision
+** [x] checkout a specific hook repo revision
 * [x] init the hook repos (execute their setup script)
 * [x] `.hooks.yml` hooks section overrides `hooks.yml` definition if set
 * [x] set itself up as to be executed on git events
