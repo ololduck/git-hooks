@@ -43,7 +43,10 @@ mod tests {
     #[test]
     fn test_checkout() {
         let dir = setup();
-        let _ = clone(".", dir.path().display().to_string());
+        let _ = clone(
+            "https://github.com/paulollivier/git-hooks",
+            dir.path().display().to_string(),
+        );
         let r = checkout("v0.3.0", dir.path().display().to_string().as_str());
         assert!(r.is_ok());
         let r = git_command(
