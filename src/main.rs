@@ -317,19 +317,24 @@ struct ExternalHookRepo {
 
 impl ExternalHookRepo {
     pub fn init(&mut self) -> anyhow::Result<()> {
+        let clone_dir = self.update()?;
+        let mut repo_config = String::new();
+        File::open(Path::new(&clone_dir).join("hooks.yml"))?.read_to_string(&mut repo_config)?;
+        debug!("Got hooks.yml for {}", self.url);
+        let hook_repo: ExternalHookRepo = serde_yaml::from_str(&repo_config)?;
+        debug!("{:?}", hook_repo);
+        self.hooks = hook_repo.hooks;
+        self.setup()
+    }
+
+    fn update(&self) -> anyhow::Result<String> {
         let clone_dir = get_local_repo_path(&self.url)?;
         debug!("cloning {} to {}", &self.url, &clone_dir);
         git::pull(&self.url, &clone_dir)?;
         if let Some(v) = &self.version {
             git::checkout(v, &clone_dir)?;
         }
-        let mut repo_config = String::new();
-        File::open(format!("{}/{}", clone_dir, "hooks.yml"))?.read_to_string(&mut repo_config)?;
-        debug!("Got hooks.yml");
-        let hook_repo: ExternalHookRepo = serde_yaml::from_str(&repo_config)?;
-        debug!("{:?}", hook_repo);
-        self.hooks = hook_repo.hooks;
-        self.setup()
+        Ok(clone_dir)
     }
 
     /// runs the optional setup scripts
@@ -407,9 +412,25 @@ impl HookConfig {
         Ok(())
     }
 
+    /// Updates (pulls) the repositories. Doesn't re-read their configuration.
+    fn update(&self) -> anyhow::Result<()> {
+        // for repo in self.repos {
+        //     repo.update()?;
+        // }
+        self.repos
+            .iter()
+            .map(|repo| {
+                if let Err(e) = repo.update() {
+                    // then the clone/pull failed
+                    error!("Could not download {}: {}", repo.url, e);
+                }
+            })
+            .for_each(drop);
+        Ok(())
+    }
+
     /// finds defined values in the hook definitions, and overrides the definitions in repos
     fn update_repos_config(&mut self) {
-        // TODO error[E0500]: closure requires unique access to `self` but it is already borrowed
         let hooks = &self.hooks;
         self.repos
             .iter_mut()
@@ -483,9 +504,10 @@ fn main() -> anyhow::Result<()> {
         .about("A git hooks manager\nhttps://github.com/paulollivier/git-hooks")
         .subcommand(SubCommand::with_name("self-update").about("git-hooks will try to update itself."))
         .subcommand(SubCommand::with_name("init").about("Install the git hooks in .git/hooks"))
+        .subcommand(SubCommand::with_name("update").about("Update the hook repositories."))
         .subcommand(
             SubCommand::with_name("run")
-                .about("Runs the configured hooks for a given event")
+                .about("Runs the configured hooks for a given event.")
                 .arg(Arg::with_name("event")
                     .index(1)
                     .help("Runs the hook for the given event, eg. \"pre-commit\", \"post-commit\"…")
@@ -503,11 +525,26 @@ fn main() -> anyhow::Result<()> {
             debug!("reading conf");
             let conf = HookConfig::from_file(None)?;
             debug!("merged conf: {:#?}", conf);
+            conf.update()?;
             if ask_for_user_confirmation(
                 "This will overwrite all the hooks in .git/hooks. Are you sure? [Y/N]",
             )? {
                 conf.init(ALL_HOOK_EVENTS)?;
                 println!("I have init'd myself successfully! 🚀");
+            } else {
+                println!("Operation cancelled by user.");
+            }
+        }
+        ("update", _) => {
+            debug!("reading conf");
+            let conf = HookConfig::from_file(None)?;
+            debug!("merged conf: {:#?}", conf);
+            if ask_for_user_confirmation(
+                "This will attempt to update (pull) all hook repositories. \
+            If you want to prevent some of updating, please pin their versions.\
+            Are you sure you want to do that? [Y/N]",
+            )? {
+                conf.update()?;
             } else {
                 println!("Operation cancelled by user.");
             }
