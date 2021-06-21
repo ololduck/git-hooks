@@ -17,9 +17,11 @@ mod utils;
 
 #[cfg(test)]
 mod tests {
-    use crate::{git, ExternalHookRepo, Hook, HookConfig, HookEvent};
     use std::env::{current_dir, set_current_dir};
+
     use tempdir::TempDir;
+
+    use crate::{git, ExternalHookRepo, Hook, HookConfig, HookEvent};
 
     #[test]
     fn test_merge() {
@@ -139,7 +141,7 @@ static ALL_HOOK_EVENTS: &[HookEvent] = &[
 ];
 
 impl HookEvent {
-    fn to_kebab_case(&self) -> &'static str {
+    fn as_kebab_case(&self) -> &'static str {
         match self {
             HookEvent::ApplyPatchMsg => "apply-patch-msg",
             HookEvent::CommitMsg => "commit-msg",
@@ -186,8 +188,10 @@ struct Hook {
 
 impl Clone for Hook {
     fn clone(&self) -> Self {
-        let mut h = Hook::default();
-        h.name = self.name.clone();
+        let mut h = Hook {
+            name: self.name.clone(),
+            ..Default::default()
+        };
         if let Some(self_on_event) = &self.on_event {
             let mut on_event = Vec::new();
             for e in self_on_event {
@@ -401,11 +405,11 @@ impl HookConfig {
             let mut hook_script = File::create(format!(
                 "{}/.git/hooks/{}",
                 git::root()?,
-                event.to_kebab_case()
+                event.as_kebab_case()
             ))?;
             hook_script.set_permissions(Permissions::from_mode(0o755))?;
             hook_script.write_all(
-                format!("#!/bin/bash -e\ngit-hooks run {}\n", event.to_kebab_case()).as_bytes(),
+                format!("#!/bin/bash -e\ngit-hooks run {}\n", event.as_kebab_case()).as_bytes(),
             )?;
         }
         //TODO: create .hooks.yml if not existing?
@@ -512,7 +516,7 @@ fn main() -> anyhow::Result<()> {
                     .index(1)
                     .help("Runs the hook for the given event, eg. \"pre-commit\", \"post-commit\"…")
                     .required(true)
-                    .possible_values(&ALL_HOOK_EVENTS.iter().map(|e| e.to_kebab_case()).collect::<Vec<&'static str>>())
+                    .possible_values(&ALL_HOOK_EVENTS.iter().map(|e| e.as_kebab_case()).collect::<Vec<&'static str>>())
                 ),
         );
     let matches = app.get_matches();
