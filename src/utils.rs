@@ -135,6 +135,7 @@ pub fn _is_program_in_path(program: &str) -> bool {
     false
 }
 
+/// returns an expanded $PATH, prefixed with the given string
 pub fn prefix_path(p: &str) -> String {
     // expand PATH
     let mut bin_path = env::var("PATH").expect("PATH is not set in the env.");

@@ -17,6 +17,8 @@ In this case, the binary will be found in `~/.cargo/bin`.
 
 == Usage
 
+image:demo.gif[demo gif]
+
 .git-hooks binary help page
 [source]
 ----
@@ -91,7 +93,7 @@ It contains definitions to be read by the main binary.
 repos:
   - url: https://github.com/paulollivier/rust-hooks
 hooks:
-  - name: cargofmt
+  - name: cargo fmt
 ----
 
 === A hook definitions repository
