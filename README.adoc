@@ -91,7 +91,7 @@ It contains definitions to be read by the main binary.
 [source,yaml]
 ----
 repos:
-  - https://github.com/paulollivier/rust-hooks
+  - url: https://github.com/paulollivier/rust-hooks
 hooks:
   - name: cargo fmt
 ----
